@@ -249,23 +249,29 @@ void main() {
   });
 
   test('Error field is private with public accessors', () {
-    final Root root = Root(apis: <Api>[
-      AstHostApi(name: 'Api', methods: <Method>[
-        Method(
-          name: 'doSomething',
-          location: ApiLocation.host,
-          parameters: <Parameter>[
-            Parameter(
-                type: const TypeDeclaration(
-                  baseName: 'int',
-                  isNullable: false,
-                ),
-                name: 'someInput')
-          ],
-          returnType: const TypeDeclaration(baseName: 'int', isNullable: false),
-        )
-      ])
-    ], classes: <Class>[], enums: <Enum>[]);
+    final Root root = Root(
+      apis: <Api>[
+        AstHostApi(name: 'Api', methods: <Method>[
+          Method(
+            name: 'doSomething',
+            location: ApiLocation.host,
+            parameters: <Parameter>[
+              Parameter(
+                  type: const TypeDeclaration(
+                    baseName: 'int',
+                    isNullable: false,
+                  ),
+                  name: 'someInput')
+            ],
+            returnType:
+                const TypeDeclaration(baseName: 'int', isNullable: false),
+          )
+        ])
+      ],
+      classes: <Class>[],
+      enums: <Enum>[],
+      containsHostApi: true,
+    );
     {
       final StringBuffer sink = StringBuffer();
       const CppGenerator generator = CppGenerator();
@@ -1197,16 +1203,14 @@ void main() {
           code,
           contains(
               'const auto* a_map_arg = std::get_if<EncodableMap>(&encodable_a_map_arg);'));
-      // Ints are complicated since there are two possible pointer types, but
-      // the parameter always needs an int64_t*.
       expect(
           code,
           contains(
-              'const int64_t an_int_arg_value = encodable_an_int_arg.IsNull() ? 0 : encodable_an_int_arg.LongValue();'));
+              'const auto* a_bool_arg = std::get_if<bool>(&encodable_a_bool_arg);'));
       expect(
           code,
           contains(
-              'const auto* an_int_arg = encodable_an_int_arg.IsNull() ? nullptr : &an_int_arg_value;'));
+              'const auto* an_int_arg = std::get_if<int64_t>(&encodable_an_int_arg);'));
       // Custom class types require an extra layer of extraction.
       expect(
           code,
@@ -2072,6 +2076,7 @@ void main() {
       ],
       classes: <Class>[],
       enums: <Enum>[],
+      containsFlutterApi: true,
     );
     final StringBuffer sink = StringBuffer();
     const CppGenerator generator = CppGenerator();

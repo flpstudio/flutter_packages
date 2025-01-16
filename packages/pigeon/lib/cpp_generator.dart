@@ -213,24 +213,14 @@ class CppHeaderGenerator extends StructuredGenerator<CppOptions> {
     Indent indent, {
     required String dartPackageName,
   }) {
-    final bool hasHostApi = root.apis
-        .whereType<AstHostApi>()
-        .any((Api api) => api.methods.isNotEmpty);
-    final bool hasFlutterApi = root.apis
-        .whereType<AstFlutterApi>()
-        .any((Api api) => api.methods.isNotEmpty);
-
     _writeFlutterError(indent);
-    if (hasHostApi) {
+    if (root.containsHostApi) {
       _writeErrorOr(
         indent,
         friends: root.apis
             .where((Api api) => api is AstFlutterApi || api is AstHostApi)
             .map((Api api) => api.name),
       );
-    }
-    if (hasFlutterApi) {
-      // Nothing yet.
     }
   }
 
@@ -867,9 +857,7 @@ class CppSourceGenerator extends StructuredGenerator<CppOptions> {
     // Returns the expression to convert the given EncodableValue to a field
     // value.
     String getValueExpression(NamedType field, String encodable) {
-      if (field.type.baseName == 'int') {
-        return '$encodable.LongValue()';
-      } else if (field.type.baseName == 'Object') {
+      if (field.type.baseName == 'Object') {
         return encodable;
       } else {
         final HostDatatype hostDatatype =
@@ -1004,7 +992,7 @@ EncodableValue $_overflowClassName::FromEncodableList(
     required String dartPackageName,
   }) {
     final List<EnumeratedType> enumeratedTypes =
-        getEnumeratedTypes(root).toList();
+        getEnumeratedTypes(root, excludeSealedClasses: true).toList();
     indent.newln();
     if (root.requiresOverflowClass) {
       _writeCodecOverflowUtilities(
@@ -1636,17 +1624,7 @@ ${prefix}reply(EncodableValue(std::move(wrapped)));''';
     if (hostType.isNullable) {
       // Nullable arguments are always pointers, with nullptr corresponding to
       // null.
-      if (hostType.datatype == 'int64_t') {
-        // The EncodableValue will either be an int32_t or an int64_t depending
-        // on the value, but the generated API requires an int64_t so that it can
-        // handle any case. Create a local variable for the 64-bit value...
-        final String valueVarName = '${argName}_value';
-        indent.writeln(
-            'const int64_t $valueVarName = $encodableArgName.IsNull() ? 0 : $encodableArgName.LongValue();');
-        // ... then declare the arg as a reference to that local.
-        indent.writeln(
-            'const auto* $argName = $encodableArgName.IsNull() ? nullptr : &$valueVarName;');
-      } else if (hostType.datatype == 'EncodableValue') {
+      if (hostType.datatype == 'EncodableValue') {
         // Generic objects just pass the EncodableValue through directly.
         indent.writeln('const auto* $argName = &$encodableArgName;');
       } else if (hostType.isBuiltin) {
